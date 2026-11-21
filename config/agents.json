@@ -185,8 +185,8 @@
   "runtime": {
     "agent_loop_max_steps": 100,
     "agent_loop_tool_result_max_chars": 4000,
-    "brain_turn_timeout_seconds": 300,
-    "chat_turn_timeout_seconds": 90.0,
+    "brain_turn_timeout_seconds": 1200,
+    "chat_turn_timeout_seconds": 1200.0,
     "clarify_llm_max_tokens": 256,
     "clarify_llm_model": "",
     "clarify_llm_provider": "",
@@ -337,5 +337,6 @@
   },
   "system": {
     "runtime": {}
-  }
+  },
+  "default_agent": "release"
 }

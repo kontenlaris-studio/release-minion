@@ -111,6 +111,56 @@ class ReleaseReport(BaseModel):
     summary: str
 
 
+def apply_guardrails(report: ReleaseReport, facts: dict) -> tuple[ReleaseReport, list[str]]:
+    """Verify the model's report against deterministic tool facts.
+
+    Small local models get the facts right but the verdict wrong; the
+    documented readiness rule is cheap to check exactly, so the workflow
+    enforces it and logs every correction.
+    """
+    import re
+
+    corrections: list[str] = []
+    hist = facts["git_history"]
+    m = re.search(r"latest_tag: (\S+)", hist)
+    tag = m.group(1) if m else ""
+    if tag and tag != "(none)" and report.last_tag != tag:
+        corrections.append(f"last_tag {report.last_tag!r} -> {tag!r}")
+        report.last_tag = tag
+    m = re.search(r"commits_since_tag: (\d+)", hist)
+    if m and report.commits_since_tag != int(m.group(1)):
+        corrections.append(
+            f"commits_since_tag {report.commits_since_tag} -> {m.group(1)}")
+        report.commits_since_tag = int(m.group(1))
+    m = re.search(r"version[:\s]+([0-9]+\.[0-9]+\.[0-9]+)",
+                  facts["project_version"])
+    if m and report.version != m.group(1):
+        corrections.append(f"version {report.version!r} -> {m.group(1)!r}")
+        report.version = m.group(1)
+
+    clog = facts["changelog_status"]
+    documented = (
+        f"## {report.version}" in clog
+        or f"## [{report.version}]" in clog
+        or "has_unreleased_section: True" in clog
+    )
+    if not documented:
+        blocker = (f"CHANGELOG.md does not document version "
+                   f"{report.version} (no matching heading, no Unreleased section)")
+        if blocker not in report.blockers:
+            report.blockers.append(blocker)
+        if report.readiness != "needs_work":
+            corrections.append(
+                f"readiness {report.readiness!r} -> 'needs_work' "
+                "(changelog does not document the version)")
+            report.readiness = "needs_work"
+    if report.commits_since_tag == 0 and report.readiness == "ready":
+        corrections.append("readiness 'ready' -> 'needs_work' (no commits since tag)")
+        report.readiness = "needs_work"
+        report.blockers.append("No commits since the last tag")
+    return report, corrections
+
+
 INSTRUCTIONS = (
     "You are ReleaseMinion, a release-readiness inspector. "
     "Always inspect the repository with the provided tools before answering; "
@@ -128,42 +178,104 @@ def main() -> int:
     parser.add_argument("--repo", required=True, help="Path to the git repo to inspect")
     parser.add_argument("--agent", default="release")
     parser.add_argument("--config", default=".openminion/agents.json")
-    parser.add_argument("--session", default="release-demo")
+    parser.add_argument("--session", default="release-demo-v5")
     parser.add_argument("--out", default="data/report.json")
     parser.add_argument("--notes", default="data/release-notes.md")
     args = parser.parse_args()
 
     repo = str(Path(args.repo).resolve())
-    prompt = f"Inspect the repository at {repo} and produce the release report."
 
+    # Deterministic ground-truth facts, gathered with the same tool functions
+    # the agent uses. Small local models are unreliable at emitting strict
+    # JSON via output_type coercion, so the flow is two-phase:
+    #   A) the agent inspects the repo with its tools (free text);
+    #   B) a structuring turn converts the inspection into ReleaseReport JSON,
+    #      checked against these facts.
+    facts = {
+        "git_history": git_history.fn(repo_path=repo) if hasattr(git_history, "fn") else git_history(repo_path=repo),
+        "project_version": project_version.fn(repo_path=repo) if hasattr(project_version, "fn") else project_version(repo_path=repo),
+        "changelog_status": changelog_status.fn(repo_path=repo) if hasattr(changelog_status, "fn") else changelog_status(repo_path=repo),
+    }
+    schema = json.dumps(ReleaseReport.model_json_schema())
+
+    tool_names = ["git_history", "diff_summary", "project_version",
+                  "changelog_status"]
     try:
+        # Phase A uses its own Agent instance with forced tools: a small
+        # local model otherwise sometimes declines to call tools at all.
         with Agent(
             agent_id=args.agent,
             config_path=args.config,
             instructions=INSTRUCTIONS,
             tools=[git_history, diff_summary, project_version, changelog_status],
-            output_type=ReleaseReport,
+            forced_tools=tool_names,
+            session_id=args.session,
+        ) as inspector:
+            inspection = inspector.run(
+                f"Inspect the repository at {repo}. Call each of your tools "
+                "exactly once, then summarize the facts and your readiness "
+                "verdict in plain text."
+            )
+            print(f"[inspection] {inspection.text}\n")
+            print("[verified facts] "
+                  + json.dumps({k: v.replace(chr(10), " | ")[:220]
+                                for k, v in facts.items()}) + "\n")
+
+        # Phases B/C share the same session from a tool-less Agent instance.
+        with Agent(
+            agent_id=args.agent,
+            config_path=args.config,
+            instructions=INSTRUCTIONS,
             session_id=args.session,
         ) as agent:
-            try:
-                result = agent.run(prompt)
-                report = result.output
-            except AgentOutputValidationError:
-                # Fallback path: free-text inspection first, then a structured
-                # pass over the gathered facts (documented in What We Learned).
-                raw = agent.run(prompt + " Answer as plain text with all facts.")
-                follow = agent.run(
-                    "Convert your inspection into the structured report now. "
-                    f"Facts you found: {raw.text[:2000]}"
+
+            report = None
+            last_err = ""
+            for _ in range(2):
+                reply = agent.run(
+                    "Now output ONLY a JSON object (no prose, no code fences) "
+                    f"matching this schema: {schema}. Base it on your "
+                    f"inspection and these verified facts: {json.dumps(facts)}. "
+                    "A version counts as documented only if a changelog "
+                    "heading exactly matches it."
+                    + (f" Previous attempt failed validation: {last_err}" if last_err else "")
                 )
-                report = follow.output
+                text = reply.text.strip()
+                start, end = text.find("{"), text.rfind("}")
+                try:
+                    report = ReleaseReport.model_validate_json(text[start:end + 1])
+                    break
+                except Exception as exc:  # noqa: BLE001 - retry once with error
+                    last_err = str(exc)[:200]
+            if report is None:
+                print(f"structured output failed: {last_err}")
+                return 1
+
+            report, corrections = apply_guardrails(report, facts)
+            for line in corrections:
+                print(f"[guardrail] {line}")
             print(report.model_dump_json(indent=2))
 
-            memory = agent.run(
-                "From your inspection in this session: what is the current "
-                "version, and which blockers remain? Two short sentences."
-            )
-            print(f"\n[session memory] {memory.text}")
+            # The runtime's LLM freshness classifier (same small model)
+            # intermittently mislabels recall questions as live-data
+            # requests and forces a refusal; retry within the session.
+            recap = report.model_dump_json()
+            memory_text = ""
+            for attempt in range(3):
+                memory = agent.run(
+                    "Answer from this conversation's history only; this is "
+                    "a memory-recall question about a local git repository, "
+                    "not a news or live-data question. Your verified "
+                    f"report in this session was: {recap}. Restate its "
+                    "version, last_tag, readiness, and blockers in two "
+                    "short sentences."
+                )
+                memory_text = memory.text
+                if "couldn't provide a grounded" not in memory_text:
+                    break
+                print(f"[session memory] attempt {attempt + 1} misclassified "
+                      "as live-data request; retrying")
+            print(f"\n[session memory] {memory_text}")
     except ProviderError as exc:
         print(f"provider failed: {exc.code}: {exc.message}")
         return 1

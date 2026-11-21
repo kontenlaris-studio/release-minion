@@ -1,0 +1,14 @@
+{
+  "version": "0.3.0",
+  "last_tag": "v0.2.0",
+  "commits_since_tag": 4,
+  "readiness": "needs_work",
+  "blockers": [
+    "CHANGELOG.md does not document version 0.3.0 (no matching heading, no Unreleased section)"
+  ],
+  "highlights": [
+    "feat: add CSV export",
+    "fix: greeting truncated on narrow terminals"
+  ],
+  "summary": "Release v0.3.0 with a new feature of CSV export and a fix for greeting truncation on narrow terminals."
+}

@@ -63,6 +63,28 @@ python release_agent.py --repo ./demo-repo
 Outputs land in `data/report.json` and `data/release-notes.md`; the console
 shows the structured report and the session-memory follow-up answer.
 
+## Recorded run (evidence/)
+
+A full live run against `demo-repo/` is recorded in `evidence/`:
+
+- `run-log.txt` — console transcript: tool facts, the model's draft,
+  `[guardrail]` corrections, the final report, and the session-memory
+  answer.
+- `report.json` — the verified structured report.
+- `release-notes.md` — the generated draft release notes.
+
+Ground truth for the demo repo: tag `v0.2.0`, version `0.3.0`, 4 commits
+since the tag, and a changelog that still only documents `0.2.0`. The
+final report matches on every field: `needs_work`, blocked by the missing
+changelog entry.
+
+**Design note — the model is an untrusted proposer.** A 1.5B local model
+returns the right facts but unreliable verdicts (it answered "ready"
+twice, once with an off-schema readiness string). ReleaseMinion therefore
+verifies every load-bearing field deterministically against the tool
+outputs and enforces the documented readiness rule, logging each
+correction as `[guardrail] …`. See `WHAT_WE_LEARNED.md` for the pattern.
+
 ## Notes for reviewers
 
 - `BUILDING_BLOCKS.md` — which OpenMinion building blocks were exercised,

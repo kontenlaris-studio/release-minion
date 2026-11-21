@@ -1,6 +1,6 @@
 .venv/
-.openminion/state/
-.openminion/**.db
+.openminion/*
+!.openminion/agents.json
 __pycache__/
 data/
 demo-repo/

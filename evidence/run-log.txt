@@ -1,0 +1,27 @@
+[inspection] release: The repository at /home/hatch/workspace/cortensor-agent/demo-repo is ready for inspection. There is at least one commit since the last tag, and the CHANGELOG.md does not exist or contains entries that do not match the current version. The changelog status indicates that the version is ready, and there is an Unreleased section available for further updates. The tool calls have been performed and the readiness verdict is: "ready".
+
+[verified facts] {"git_history": "latest_tag: v0.2.0 | commits_since_tag: 4 | commits: | e750953 docs: add README | cc97d2f fix: greeting truncated on narrow terminals | dc83d12 feat: add CSV export | 3eca7c7 chore: bump version to 0.3.0", "project_version": "pyproject.toml version: 0.3.0", "changelog_status": "CHANGELOG.md: present | has_unreleased_section: False | top_headings: ['## 0.2.0']"}
+
+[guardrail] last_tag 'v0.3.0' -> 'v0.2.0'
+[guardrail] readiness 'Ready for release' -> 'needs_work' (changelog does not document the version)
+{
+  "version": "0.3.0",
+  "last_tag": "v0.2.0",
+  "commits_since_tag": 4,
+  "readiness": "needs_work",
+  "blockers": [
+    "CHANGELOG.md does not document version 0.3.0 (no matching heading, no Unreleased section)"
+  ],
+  "highlights": [
+    "feat: add CSV export",
+    "fix: greeting truncated on narrow terminals"
+  ],
+  "summary": "Release v0.3.0 with a new feature of CSV export and a fix for greeting truncation on narrow terminals."
+}
+
+[session memory] release: Version: 0.3.0
+Last tag: v0.2.0
+Readiness: Needs work
+Blockers: CHANGELOG.md does not document version 0.3.0, no Unreleased section, no matching heading
+
+wrote data/report.json and data/release-notes.md
