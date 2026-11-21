@@ -1,0 +1,15 @@
+file '/home/hatch/workspace/cortensor-agent/video/slide0.png'
+duration 18.93
+file '/home/hatch/workspace/cortensor-agent/video/slide1.png'
+duration 26.56
+file '/home/hatch/workspace/cortensor-agent/video/slide2.png'
+duration 18.21
+file '/home/hatch/workspace/cortensor-agent/video/slide3.png'
+duration 17.03
+file '/home/hatch/workspace/cortensor-agent/video/slide4.png'
+duration 18.93
+file '/home/hatch/workspace/cortensor-agent/video/slide5.png'
+duration 20.15
+file '/home/hatch/workspace/cortensor-agent/video/slide6.png'
+duration 24.28
+file '/home/hatch/workspace/cortensor-agent/video/slide6.png'

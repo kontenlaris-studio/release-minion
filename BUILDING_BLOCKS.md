@@ -34,6 +34,7 @@ out of scope for this single-purpose agent.
    providers (groq, gemini, deepseek, …). The legacy id `cortensor` resolves
    to the direct Router path, not the Portal — easy to misread.
 4. **Environment proxy variables break the local Ollama provider.**
+   Filed upstream: https://github.com/openminion/openminion/issues/834
    Repro: run `openminion doctor --check-turn` in an environment where
    `http_proxy`/`https_proxy` are set and `no_proxy` contains bracketed
    IPv6 entries (e.g. `[::1]`, common in sandboxed CI VMs).
@@ -69,7 +70,9 @@ out of scope for this single-purpose agent.
    set and tools are present, do a final schema-constrained turn
    automatically, or document this limitation next to `output_type`.
 7. **The LLM freshness classifier misfires on small local models and
-   hijacks ordinary turns.** Every turn is classified for "freshness
+   hijacks ordinary turns.** Filed upstream:
+   https://github.com/openminion/openminion/issues/835
+   Every turn is classified for "freshness
    sensitivity" by the same configured model
    (`modules/brain/bootstrap/freshness_classify.py`). With
    `qwen2.5:1.5b`, plain session-recall questions ("which version and tag

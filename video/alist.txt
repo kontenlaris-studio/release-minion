@@ -1,0 +1,7 @@
+file '/home/hatch/workspace/cortensor-agent/video/narr0.mp3'
+file '/home/hatch/workspace/cortensor-agent/video/narr1.mp3'
+file '/home/hatch/workspace/cortensor-agent/video/narr2.mp3'
+file '/home/hatch/workspace/cortensor-agent/video/narr3.mp3'
+file '/home/hatch/workspace/cortensor-agent/video/narr4.mp3'
+file '/home/hatch/workspace/cortensor-agent/video/narr5.mp3'
+file '/home/hatch/workspace/cortensor-agent/video/narr6.mp3'
