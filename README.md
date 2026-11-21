@@ -2,6 +2,9 @@
 
 **Cortensor Hackathon #5 submission** (DoraHacks #2418) by Kontenlaris Studio.
 
+**Demo video (2:21):** https://www.youtube.com/watch?v=DYcOw4r60dU
+**Submission summary:** [`SUBMISSION.md`](SUBMISSION.md)
+
 ReleaseMinion inspects a local Git repository and answers one question:
 *is this project ready to release, and if not, what exactly blocks it?*
 
