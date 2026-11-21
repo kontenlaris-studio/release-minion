@@ -1,0 +1,6 @@
+.venv/
+.openminion/state/
+.openminion/**.db
+__pycache__/
+data/
+demo-repo/
